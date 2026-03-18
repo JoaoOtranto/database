@@ -53,9 +53,9 @@ def salvar_no_postgres(data):
             data.get("website_id"),
             data.get("event"),
             data.get("timestamp"),
-            data.get("data", {}).get("session_id"),        -- desce um nível
-            data.get("data", {}).get("data", {}).get("isStudent"),  -- desce dois níveis
-            psycopg2.extras.Json(data)                     -- JSON completo
+            data.get("data", {}).get("session_id"),        # desce um nível
+            data.get("data", {}).get("data", {}).get("isStudent"),  # desce dois níveis
+            psycopg2.extras.Json(data)                     # JSON completo
         ])
         conn.commit()
         cur.close()
