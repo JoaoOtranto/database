@@ -1,18 +1,69 @@
 from flask import Flask, request, jsonify
 from pymongo import MongoClient
+import psycopg2
+import psycopg2.extras
 import os
+import logging
+from datetime import datetime
+
+#------------------------------------
+# Configuração de logs
+#------------------------------------
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
+#------------------------------------
+# Conexão MongoDB
+#-----------------------------------
+
+
 # Obtenha a URI a partir da variável de ambiente
 MONGO_URI = os.environ.get("MONGODB_URI")
-
-# Conecta ao cluster MongoDB Atlas
-client = MongoClient(MONGO_URI)
+mongo_client = MongoClient(MONGO_URI)
 
 # Selecione o banco de dados e a coleção
-db = client["Assuntos"]
+db = mongo_client["Assuntos"]
 collection = db["Crisp.Assuntos Crisp"]
+
+#------------------------------------
+# Conexão PostgreSQL
+#------------------------------------
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+def get_pg_connection():
+    return psycopg2.connect(DATABASE_URL)
+
+def salvar_no_postgres(data):
+    try:
+        conn = get_pg_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO crisp_eventos (
+                website_id,
+                event,
+                timestamp,
+                session_id,
+                is_student,
+                payload
+            ) VALUES (%s, %s, %s, %s, %s, %s)
+        """, [
+            data.get("website_id"),
+            data.get("event"),
+            data.get("timestamp"),
+            data.get("data", {}).get("session_id"),        -- desce um nível
+            data.get("data", {}).get("data", {}).get("isStudent"),  -- desce dois níveis
+            psycopg2.extras.Json(data)                     -- JSON completo
+        ])
+        conn.commit()
+        cur.close()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"[PostgreSQL] Erro ao salvar: {e}")
+        return False
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -22,12 +73,20 @@ def webhook():
         
         # Insere os dados na coleção do MongoDB
         result = collection.insert_one(data)
-        
         # Adiciona o _id ao retorno e converte para string
         data["_id"] = str(result.inserted_id)
         
+        pg_ok = salvar_no_postgresql(data)
+        if not pg_ok:
+            logger.warning(f"[PostgreSQL] Falha silenciosa para o evento: {data.get('_id')}")
+
         # Retorna uma resposta de sucesso
-        return jsonify({"status": "sucesso", "data": data}), 200
+        return jsonify({
+            "status": "sucesso", 
+            "data": data,
+            "postgres": "ok" if pg_ok else "falha silenciosa"
+            }), 200
+    
     except Exception as e:
         # Em caso de erro, retorna uma resposta de erro
         return jsonify({"status": "erro", "mensagem": str(e)}), 500
