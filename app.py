@@ -36,7 +36,7 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 def get_pg_connection():
     return psycopg2.connect(DATABASE_URL)
 
-def salvar_no_postgres(data):
+def salvar_no_postgresql(data):
     try:
         conn = get_pg_connection()
         cur = conn.cursor()
