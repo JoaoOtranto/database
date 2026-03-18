@@ -42,20 +42,28 @@ def salvar_no_postgres(data):
         cur = conn.cursor()
         cur.execute("""
             INSERT INTO crisp_eventos (
-                website_id,
-                event,
-                timestamp,
+                website_id, event, timestamp,
                 session_id,
-                is_student,
+                is_student, is_seller, is_team_member,
+                is_web, mobile_app, blacklist_till,
+                total_commission_earned, assunto,
                 payload
-            ) VALUES (%s, %s, %s, %s, %s, %s)
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """, [
             data.get("website_id"),
             data.get("event"),
             data.get("timestamp"),
-            data.get("data", {}).get("session_id"),        # desce um nível
-            data.get("data", {}).get("data", {}).get("isStudent"),  # desce dois níveis
-            psycopg2.extras.Json(data)                     # JSON completo
+            data.get("data", {}).get("session_id"),
+            # campos de data.data
+            data.get("data", {}).get("data", {}).get("isStudent"),
+            data.get("data", {}).get("data", {}).get("isSeller"),
+            data.get("data", {}).get("data", {}).get("isTeamMember"),
+            data.get("data", {}).get("data", {}).get("isWeb"),
+            data.get("data", {}).get("data", {}).get("mobile_app"),
+            data.get("data", {}).get("data", {}).get("blacklist_till"),
+            data.get("data", {}).get("data", {}).get("total_commission_earned"),
+            data.get("data", {}).get("data", {}).get("assunto"),
+            psycopg2.extras.Json(data)
         ])
         conn.commit()
         cur.close()
