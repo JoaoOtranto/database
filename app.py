@@ -70,7 +70,7 @@ def salvar_no_postgres(data):
         conn.close()
         return True
     except Exception as e:
-        logger.error(f"[PostgreSQL] Erro ao salvar: {e}")
+        print(f"[PostgreSQL] Erro detalhado: {e}", flush=True)
         return False
 
 @app.route('/webhook', methods=['POST'])
